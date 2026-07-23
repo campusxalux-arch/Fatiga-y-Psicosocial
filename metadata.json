@@ -1,0 +1,8 @@
+{
+  "name": "Evaluación Fatiga y Psicosocial",
+  "description": "Aplicación web móvil-primero para exámenes teóricos de conducción, con registro de usuarios, selección aleatoria de preguntas y sincronización automática con Google Sheets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
