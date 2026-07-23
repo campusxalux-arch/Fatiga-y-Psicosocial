@@ -1,0 +1,13 @@
+[
+  {
+    "nombreCompleto": "Prueba Final Directa",
+    "numeroIdentificacion": "12345678",
+    "empresa": "Empresa Test",
+    "tipoLicencia": "C1",
+    "fatigaScore": 20,
+    "psicosocialScore": 25,
+    "edad": 35,
+    "antiguedad": 5,
+    "timestamp": "2026-07-23T18:17:26.822Z"
+  }
+]
