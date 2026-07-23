@@ -39,5 +39,22 @@
     "psicosocialNivel": "Agresividad Moderada - Riesgo Intermedio",
     "psicosocialInterpretacion": "Existen conductas reactivas e impulsividad ocasional. Se recomienda capacitación en inteligencia emocional, técnicas de manejo de estrés y conducción defensiva.",
     "timestamp": "2026-07-23T18:31:23.306Z"
+  },
+  {
+    "tipoIdentificacion": "CC",
+    "numeroIdentificacion": "1098765432",
+    "nombreCompleto": "Prueba Verificacion",
+    "edad": 30,
+    "empresa": "Empresa Test",
+    "antiguedad": 3,
+    "tipoLicencia": "B1",
+    "fatigaScore": 20,
+    "psicosocialScore": 25,
+    "tiempoEmpleado": "01:30",
+    "fatigaNivel": "Fatiga Baja - Estado Óptimo",
+    "fatigaInterpretacion": "El conductor se encuentra apto para iniciar o continuar la marcha de forma segura.",
+    "psicosocialNivel": "Baja Agresividad - Conducción Prosocial",
+    "psicosocialInterpretacion": "El conductor demuestra tolerancia, adecuado autocontrol emocional y manejo de la frustración en la vía.",
+    "timestamp": "2026-07-23T18:43:37.612Z"
   }
 ]
