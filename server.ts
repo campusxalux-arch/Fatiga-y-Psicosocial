@@ -17,7 +17,7 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 const DEFAULT_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbzrFyRpcJLLuh8KTzhI_MAImzc6kPDBi-jFM6T8KEBoo1KBnfVgP4d9vzUuQyDug6vEsg/exec";
+  "https://script.google.com/macros/s/AKfycbydskyfWZW82qZAcmiPRkQuJTpi5sHhx9doEGi7hxf0nBY4M8zCDdZrJeLVdRaVOSyV/exec";
 
 function getScriptUrl(): string {
   const envUrl = process.env.GOOGLE_APPS_SCRIPT_URL?.trim();

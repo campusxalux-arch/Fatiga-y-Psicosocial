@@ -1,16 +1,43 @@
 /**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- * 
- * GOOGLE APPS SCRIPT - SCRIPT DE SINCRONIZACIÓN
- * EVALUACIÓN FATIGA Y PSICOSOCIAL
+ * ====================================================================
+ * INSTRUCCIONES DE DESPLIEGUE EN GOOGLE APPS SCRIPT:
+ * ====================================================================
+ * 1. En tu hoja de Google Sheets, ve a: Extensiones > Apps Script.
+ * 2. Borra todo el código existente en el editor y pega este código completo.
+ * 3. Haz clic en "Guardar" (icono de disco 💾).
+ * 4. Haz clic en el botón azul arriba a la derecha: "Implementar" > "Nueva implementación".
+ * 5. Haz clic en el engranaje ⚙️ junto a "Seleccionar tipo" y elige "Aplicación web".
+ * 6. Configura lo siguiente (¡CRUCIAL!):
+ *    - Descripción: Sincronización Evaluaciones
+ *    - Ejecutar como: "Yo (tu correo)"
+ *    - Quién tiene acceso: "Cualquier persona" (Anyone)  <-- ¡ES OBLIGATORIO ELEGIR "Cualquier persona"!
+ * 7. Haz clic en "Implementar".
+ * 8. Autoriza los permisos que solicite Google ("Avanzado" > "Ir a Proyecto (no seguro)").
+ * 9. Copia la "URL de la aplicación web" (que termina en /exec) y pégala aquí en el chat.
+ * ====================================================================
  */
 
 function doGet(e) {
   try {
+    // Si se enviaron datos mediante query string GET (ej: ?data=... o parámetros individuales)
+    if (e && e.parameter && (e.parameter.data || e.parameter.nombreCompleto)) {
+      let data = {};
+      if (e.parameter.data) {
+        data = JSON.parse(e.parameter.data);
+      } else {
+        data = e.parameter;
+      }
+      const result = saveResultsToSheets(data);
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        message: "Resultados guardados correctamente mediante GET",
+        result: result
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     return ContentService.createTextOutput(JSON.stringify({ 
       status: "online", 
-      message: "Servidor de Evaluación Fatiga y Psicosocial Activo"
+      message: "Servidor de Evaluación Fatiga y Psicosocial Activo en Google Apps Script"
     })).setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({ 
@@ -22,16 +49,27 @@ function doGet(e) {
 
 function doPost(e) {
   try {
-    if (!e.postData || !e.postData.contents) {
-      throw new Error("No se recibieron datos de formulario.");
+    let data = null;
+
+    if (e && e.postData && e.postData.contents) {
+      try {
+        data = JSON.parse(e.postData.contents);
+      } catch (err) {
+        data = e.parameter;
+      }
+    } else if (e && e.parameter && Object.keys(e.parameter).length > 0) {
+      data = e.parameter;
+    }
+
+    if (!data) {
+      throw new Error("No se recibieron datos en la petición.");
     }
     
-    const data = JSON.parse(e.postData.contents);
     const result = saveResultsToSheets(data);
     
     return ContentService.createTextOutput(JSON.stringify({ 
       success: true, 
-      message: "Resultados de evaluación guardados con éxito",
+      message: "Resultados de evaluación guardados con éxito en Google Sheets",
       result: result 
     }))
     .setMimeType(ContentService.MimeType.JSON);
@@ -75,7 +113,10 @@ function saveResultsToSheets(data) {
 
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(officialHeaders);
-    sheet.getRange(1, 1, 1, officialHeaders.length).setFontWeight("bold").setBackground("#1e3a8a").setFontColor("white");
+    sheet.getRange(1, 1, 1, officialHeaders.length)
+      .setFontWeight("bold")
+      .setBackground("#1e3a8a")
+      .setFontColor("white");
   }
 
   const fecha = data.fecha || new Date().toLocaleDateString("es-CO");
