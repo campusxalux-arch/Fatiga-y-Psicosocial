@@ -22,5 +22,22 @@
     "psicosocialScore": 42,
     "tiempoEmpleado": "03:15",
     "timestamp": "2026-07-23T18:26:34.176Z"
+  },
+  {
+    "tipoIdentificacion": "CC",
+    "numeroIdentificacion": "1098765432",
+    "nombreCompleto": "Conductor Prueba Sheets",
+    "edad": 35,
+    "empresa": "INSCOLSST",
+    "antiguedad": 5,
+    "tipoLicencia": "C2",
+    "fatigaScore": 24,
+    "psicosocialScore": 38,
+    "tiempoEmpleado": "02:45",
+    "fatigaNivel": "Fatiga Baja - Estado Óptimo",
+    "fatigaInterpretacion": "El conductor se encuentra apto para iniciar o continuar la marcha de forma segura.",
+    "psicosocialNivel": "Agresividad Moderada - Riesgo Intermedio",
+    "psicosocialInterpretacion": "Existen conductas reactivas e impulsividad ocasional. Se recomienda capacitación en inteligencia emocional, técnicas de manejo de estrés y conducción defensiva.",
+    "timestamp": "2026-07-23T18:31:23.306Z"
   }
 ]
