@@ -122,6 +122,42 @@ function saveResultsToSheets(data) {
   const fecha = data.fecha || new Date().toLocaleDateString("es-CO");
   const hora = data.hora || new Date().toLocaleTimeString("es-CO");
 
+  // Calcular Nivel e Interpretación de Fatiga si no vienen definidos
+  const fatigaScore = Number(data.fatigaScore) || 0;
+  let fatigaNivel = data.fatigaNivel || "";
+  let fatigaInterpretacion = data.fatigaInterpretacion || "";
+
+  if (!fatigaNivel && fatigaScore > 0) {
+    if (fatigaScore <= 30) {
+      fatigaNivel = "Fatiga Baja - Estado Óptimo";
+      fatigaInterpretacion = "El conductor se encuentra apto para iniciar o continuar la marcha de forma segura.";
+    } else if (fatigaScore <= 50) {
+      fatigaNivel = "Fatiga Moderada - Alerta";
+      fatigaInterpretacion = "Existen signos claros de cansancio. Se recomienda realizar una pausa activa de 15 a 20 minutos, hidratarse y caminar antes de continuar.";
+    } else {
+      fatigaNivel = "Fatiga Alta - Riesgo Crítico";
+      fatigaInterpretacion = "Alto riesgo de microdormidas o accidentes. El conductor NO debe continuar manejando. Es obligatorio realizar un descanso prolongado o el relevo del conductor.";
+    }
+  }
+
+  // Calcular Nivel e Interpretación Psicosocial si no vienen definidos
+  const psicosocialScore = Number(data.psicosocialScore) || 0;
+  let psicosocialNivel = data.psicosocialNivel || "";
+  let psicosocialInterpretacion = data.psicosocialInterpretacion || "";
+
+  if (!psicosocialNivel && psicosocialScore > 0) {
+    if (psicosocialScore <= 30) {
+      psicosocialNivel = "Baja Agresividad - Conducción Prosocial";
+      psicosocialInterpretacion = "El conductor demuestra tolerancia, adecuado autocontrol emocional y manejo de la frustración en la vía.";
+    } else if (psicosocialScore <= 50) {
+      psicosocialNivel = "Agresividad Moderada - Riesgo Intermedio";
+      psicosocialInterpretacion = "Existen conductas reactivas e impulsividad ocasional. Se recomienda capacitación en inteligencia emocional, técnicas de manejo de estrés y conducción defensiva.";
+    } else {
+      psicosocialNivel = "Agresividad Alta - Riesgo Crítico";
+      psicosocialInterpretacion = "Alto nivel de hostilidad, reactividad y predisposición a la \"ira al volante\" (Road Rage). Requiere evaluación psicológica especializada e intervención conductual antes de asumir la responsabilidad de un vehículo.";
+    }
+  }
+
   sheet.appendRow([
     fecha,
     hora,
@@ -132,12 +168,12 @@ function saveResultsToSheets(data) {
     data.empresa || "",
     Number(data.antiguedad) || 0,
     data.tipoLicencia || "",
-    Number(data.fatigaScore) || 0,
-    data.fatigaNivel || "",
-    data.fatigaInterpretacion || "",
-    Number(data.psicosocialScore) || 0,
-    data.psicosocialNivel || "",
-    data.psicosocialInterpretacion || "",
+    fatigaScore,
+    fatigaNivel,
+    fatigaInterpretacion,
+    psicosocialScore,
+    psicosocialNivel,
+    psicosocialInterpretacion,
     data.tiempoEmpleado || "00:00"
   ]);
 

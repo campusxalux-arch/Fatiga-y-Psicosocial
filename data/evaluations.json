@@ -9,5 +9,18 @@
     "edad": 35,
     "antiguedad": 5,
     "timestamp": "2026-07-23T18:17:26.822Z"
+  },
+  {
+    "tipoIdentificacion": "CC",
+    "numeroIdentificacion": "1098765432",
+    "nombreCompleto": "Conductor Evaluado",
+    "edad": 32,
+    "empresa": "Transportes S.A.",
+    "antiguedad": 4,
+    "tipoLicencia": "C2",
+    "fatigaScore": 22,
+    "psicosocialScore": 42,
+    "tiempoEmpleado": "03:15",
+    "timestamp": "2026-07-23T18:26:34.176Z"
   }
 ]

@@ -139,7 +139,38 @@ app.get("/api/questions", async (req, res) => {
  */
 app.post("/api/results", async (req, res) => {
   try {
-    const payload = req.body;
+    const payload = req.body || {};
+    
+    // Auto-calculate fatiga level and interpretation if missing
+    const fatigaScore = Number(payload.fatigaScore) || 0;
+    if (!payload.fatigaNivel && fatigaScore > 0) {
+      if (fatigaScore <= 30) {
+        payload.fatigaNivel = "Fatiga Baja - Estado Óptimo";
+        payload.fatigaInterpretacion = "El conductor se encuentra apto para iniciar o continuar la marcha de forma segura.";
+      } else if (fatigaScore <= 50) {
+        payload.fatigaNivel = "Fatiga Moderada - Alerta";
+        payload.fatigaInterpretacion = "Existen signos claros de cansancio. Se recomienda realizar una pausa activa de 15 a 20 minutos, hidratarse y caminar antes de continuar.";
+      } else {
+        payload.fatigaNivel = "Fatiga Alta - Riesgo Crítico";
+        payload.fatigaInterpretacion = "Alto riesgo de microdormidas o accidentes. El conductor NO debe continuar manejando. Es obligatorio realizar un descanso prolongado o el relevo del conductor.";
+      }
+    }
+
+    // Auto-calculate psicosocial level and interpretation if missing
+    const psicosocialScore = Number(payload.psicosocialScore) || 0;
+    if (!payload.psicosocialNivel && psicosocialScore > 0) {
+      if (psicosocialScore <= 30) {
+        payload.psicosocialNivel = "Baja Agresividad - Conducción Prosocial";
+        payload.psicosocialInterpretacion = "El conductor demuestra tolerancia, adecuado autocontrol emocional y manejo de la frustración en la vía.";
+      } else if (psicosocialScore <= 50) {
+        payload.psicosocialNivel = "Agresividad Moderada - Riesgo Intermedio";
+        payload.psicosocialInterpretacion = "Existen conductas reactivas e impulsividad ocasional. Se recomienda capacitación en inteligencia emocional, técnicas de manejo de estrés y conducción defensiva.";
+      } else {
+        payload.psicosocialNivel = "Agresividad Alta - Riesgo Crítico";
+        payload.psicosocialInterpretacion = "Alto nivel de hostilidad, reactividad y predisposición a la \"ira al volante\" (Road Rage). Requiere evaluación psicológica especializada e intervención conductual antes de asumir la responsabilidad de un vehículo.";
+      }
+    }
+
     const authHeader = req.headers["authorization"] || "";
     const token = authHeader.replace(/^bearer\s+/i, "").trim() || payload.accessToken;
     const spreadsheetId = payload.spreadsheetId;
