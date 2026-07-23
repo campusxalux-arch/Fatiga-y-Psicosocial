@@ -93,6 +93,28 @@ export default function App() {
     const fRes = fatigaResult || calculateFatigaResult(fatigaAnswers);
     const pRes = result;
 
+    // Format answer summaries
+    const fAnswers = fatigaAnswers || {};
+    const pAnswers = answers || {};
+
+    const formatSummary = (map: Record<number, number>) => {
+      const parts: string[] = [];
+      for (let i = 1; i <= 15; i++) {
+        parts.push(`P${i}: ${map[i] ?? "-"}`);
+      }
+      return parts.join(", ");
+    };
+
+    const fQuestionsObj: Record<string, number> = {};
+    for (let i = 1; i <= 15; i++) {
+      fQuestionsObj[`f${i}`] = fAnswers[i] ?? 0;
+    }
+
+    const pQuestionsObj: Record<string, number> = {};
+    for (let i = 1; i <= 15; i++) {
+      pQuestionsObj[`p${i}`] = pAnswers[i] ?? 0;
+    }
+
     const payload = {
       tipoIdentificacion: registration?.tipoIdentificacion || "",
       numeroIdentificacion: registration?.numeroIdentificacion || "",
@@ -110,41 +132,65 @@ export default function App() {
       tiempoEmpleado: elapsed,
       fecha: new Date().toLocaleDateString("es-CO"),
       hora: new Date().toLocaleTimeString("es-CO"),
+      respuestasFatiga: formatSummary(fAnswers),
+      respuestasPsicosocial: formatSummary(pAnswers),
+      fatigaAnswers: fAnswers,
+      psicosocialAnswers: pAnswers,
+      ...fQuestionsObj,
+      ...pQuestionsObj,
     };
 
-    try {
-      // Send to server API to write to Google Sheets
-      const response = await fetch("/api/results", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+    let syncResult: { status: "success" | "error"; message: string } = {
+      status: "error",
+      message: "No se pudo conectar con el servidor de Google Sheets tras varios reintentos.",
+    };
 
-      const resData = await response.json().catch(() => null);
+    // Client-side retry mechanism with exponential backoff (up to 3 retries: 1s, 2s, 4s)
+    let attempt = 0;
+    const maxRetries = 3;
+    let delayMs = 1000;
 
-      if (response.ok && resData?.success !== false) {
-        setSyncStatus({
-          status: "success",
-          message: resData?.message || "Resultados guardados y sincronizados en Google Sheets.",
-        });
-      } else {
-        setSyncStatus({
-          status: "error",
-          message: resData?.message || resData?.error || "Error de sincronización con Google Sheets.",
-        });
+    while (attempt <= maxRetries) {
+      if (attempt > 0) {
+        console.log(`[CLIENT] Reintento de sincronización ${attempt}/${maxRetries} en ${delayMs}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        delayMs *= 2; // Retraso exponencial
       }
-    } catch (err) {
-      console.warn("Error enviando resultados a backend:", err);
-      setSyncStatus({
-        status: "error",
-        message: "No se pudo conectar con el servidor de Google Sheets.",
-      });
-    } finally {
-      // Small delay for smooth transition
-      setTimeout(() => {
-        setStep("final_success");
-      }, 600);
+
+      try {
+        const response = await fetch("/api/results", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const resData = await response.json().catch(() => null);
+
+        if (response.ok && resData?.success !== false) {
+          syncResult = {
+            status: "success",
+            message: resData?.message || "Resultados guardados y sincronizados en Google Sheets.",
+          };
+          break; // Éxito, salir del bucle de reintentos
+        } else if (resData?.message) {
+          syncResult = {
+            status: "error",
+            message: resData.message,
+          };
+        }
+      } catch (err) {
+        console.warn(`[CLIENT] Error en intento ${attempt + 1} de sincronización:`, err);
+      }
+
+      attempt++;
     }
+
+    setSyncStatus(syncResult);
+
+    // Small delay for smooth transition
+    setTimeout(() => {
+      setStep("final_success");
+    }, 600);
   };
 
   // Reset evaluation state for next driver

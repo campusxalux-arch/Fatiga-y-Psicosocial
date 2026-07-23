@@ -120,6 +120,42 @@ async function sendToGoogleAppsScript(scriptUrl: string, payload: any): Promise<
   };
 }
 
+/**
+ * Sends payload to Google Apps Script Web App with automatic exponential backoff retries.
+ */
+async function sendToGoogleAppsScriptWithRetry(
+  scriptUrl: string,
+  payload: any,
+  maxRetries = 3,
+  initialDelayMs = 1000
+): Promise<{ success: boolean; message: string; details?: any }> {
+  let attempt = 0;
+  let delay = initialDelayMs;
+
+  while (attempt <= maxRetries) {
+    if (attempt > 0) {
+      console.log(`[GAS] Reintento de conexión ${attempt}/${maxRetries} en ${delay}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      delay *= 2; // Retraso exponencial: 1s, 2s, 4s...
+    }
+
+    const result = await sendToGoogleAppsScript(scriptUrl, payload);
+    if (result.success) {
+      if (attempt > 0) {
+        console.log(`[GAS] Sincronización exitosa con Google Sheets tras ${attempt} reintentos.`);
+      }
+      return result;
+    }
+
+    attempt++;
+  }
+
+  return {
+    success: false,
+    message: "Guardado en servidor local. Se agotaron los reintentos de conexión con Google Sheets.",
+  };
+}
+
 // API Routes
 
 /**
@@ -132,6 +168,16 @@ app.get("/api/questions", async (req, res) => {
     psicosocial: PSICOSOCIAL_QUESTIONS,
   });
 });
+
+function formatAnswersSummaryServer(map: any): string {
+  if (!map) return "";
+  const parts: string[] = [];
+  for (let i = 1; i <= 15; i++) {
+    const val = map[i] || map[i.toString()] || "-";
+    parts.push(`P${i}: ${val}`);
+  }
+  return parts.join(", ");
+}
 
 /**
  * POST /api/results
@@ -171,6 +217,30 @@ app.post("/api/results", async (req, res) => {
       }
     }
 
+    // Auto-populate answers summary & individual question fields if present in maps
+    if (payload.fatigaAnswers && !payload.respuestasFatiga) {
+      payload.respuestasFatiga = formatAnswersSummaryServer(payload.fatigaAnswers);
+    }
+    if (payload.psicosocialAnswers && !payload.respuestasPsicosocial) {
+      payload.respuestasPsicosocial = formatAnswersSummaryServer(payload.psicosocialAnswers);
+    }
+
+    if (payload.fatigaAnswers) {
+      for (let i = 1; i <= 15; i++) {
+        if (!payload[`f${i}`]) {
+          payload[`f${i}`] = payload.fatigaAnswers[i] || payload.fatigaAnswers[i.toString()] || "";
+        }
+      }
+    }
+
+    if (payload.psicosocialAnswers) {
+      for (let i = 1; i <= 15; i++) {
+        if (!payload[`p${i}`]) {
+          payload[`p${i}`] = payload.psicosocialAnswers[i] || payload.psicosocialAnswers[i.toString()] || "";
+        }
+      }
+    }
+
     const authHeader = req.headers["authorization"] || "";
     const token = authHeader.replace(/^bearer\s+/i, "").trim() || payload.accessToken;
     const spreadsheetId = payload.spreadsheetId;
@@ -188,11 +258,11 @@ app.post("/api/results", async (req, res) => {
       }
     }
 
-    // 2. Fall back to Google Apps Script
+    // 2. Fall back to Google Apps Script with exponential backoff retry
     const targetScriptUrl = getScriptUrl();
     console.log("[API] Enviando resultados a Google Apps Script:", targetScriptUrl);
 
-    const gasResult = await sendToGoogleAppsScript(targetScriptUrl, payload);
+    const gasResult = await sendToGoogleAppsScriptWithRetry(targetScriptUrl, payload);
     
     // Save locally regardless so data is never lost
     try {
