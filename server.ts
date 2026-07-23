@@ -43,14 +43,42 @@ app.use(express.json());
 async function sendToGoogleAppsScript(scriptUrl: string, payload: any): Promise<{ success: boolean; message: string; details?: any }> {
   const jsonBody = JSON.stringify(payload);
 
-  // Attempt 1: GET request with JSON data param + query params (100% reliable for Google Apps Script Web Apps)
+  // Method 1: POST request with redirect follow (most reliable for Google Apps Script doPost)
+  try {
+    console.log("[GAS] Intentando envío por POST a:", scriptUrl);
+    const res = await fetch(scriptUrl, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: jsonBody,
+      redirect: "follow",
+    });
+
+    const text = await res.text();
+    console.log(`[GAS] Respuesta POST (status ${res.status}):`, text.substring(0, 300));
+
+    if (res.ok && !text.includes("<!DOCTYPE html>") && !text.includes("<html")) {
+      let parsed: any = null;
+      try { parsed = JSON.parse(text); } catch {}
+      if (parsed && (parsed.success === true || parsed.result?.success === true)) {
+        return {
+          success: true,
+          message: "Resultados guardados y sincronizados con Google Sheets correctamente.",
+          details: parsed,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn("[GAS] Error en intento POST:", err);
+  }
+
+  // Method 2: GET request with JSON data param + query params as fallback
   try {
     console.log("[GAS] Intentando envío por GET con parámetro data a:", scriptUrl);
     const queryParams = new URLSearchParams();
     queryParams.append("data", jsonBody);
     for (const [k, v] of Object.entries(payload)) {
       if (k !== "data") {
-        queryParams.append(k, String(v ?? ""));
+        queryParams.append(k, typeof v === "object" && v !== null ? JSON.stringify(v) : String(v ?? ""));
       }
     }
     const getUrl = `${scriptUrl}${scriptUrl.includes("?") ? "&" : "?"}${queryParams.toString()}`;
@@ -66,7 +94,7 @@ async function sendToGoogleAppsScript(scriptUrl: string, payload: any): Promise<
     if (res.ok && !text.includes("<!DOCTYPE html>") && !text.includes("<html")) {
       let parsed: any = null;
       try { parsed = JSON.parse(text); } catch {}
-      if (parsed && parsed.success === true) {
+      if (parsed && (parsed.success === true || parsed.result?.success === true)) {
         return {
           success: true,
           message: "Resultados guardados y sincronizados con Google Sheets correctamente.",
@@ -76,42 +104,6 @@ async function sendToGoogleAppsScript(scriptUrl: string, payload: any): Promise<
     }
   } catch (err) {
     console.warn("[GAS] Error en intento GET:", err);
-  }
-
-  // Attempt 2: POST to script.google.com with manual 302 redirect following
-  try {
-    console.log("[GAS] Intentando POST (redirección manual) a:", scriptUrl);
-    let res = await fetch(scriptUrl, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: jsonBody,
-      redirect: "manual",
-    });
-
-    if (res.status >= 300 && res.status < 400) {
-      const redirectUrl = res.headers.get("location");
-      if (redirectUrl) {
-        console.log("[GAS] Siguiendo redirección a:", redirectUrl);
-        res = await fetch(redirectUrl, { method: "GET" });
-      }
-    }
-
-    const text = await res.text();
-    console.log(`[GAS] Respuesta POST (status ${res.status}):`, text.substring(0, 300));
-
-    if (res.ok && !text.includes("<!DOCTYPE html>") && !text.includes("<html")) {
-      let parsed: any = null;
-      try { parsed = JSON.parse(text); } catch {}
-      if (parsed && parsed.success === true) {
-        return {
-          success: true,
-          message: "Resultados guardados y sincronizados con Google Sheets correctamente.",
-          details: parsed,
-        };
-      }
-    }
-  } catch (err) {
-    console.warn("[GAS] Error en intento POST manual:", err);
   }
 
   return {
