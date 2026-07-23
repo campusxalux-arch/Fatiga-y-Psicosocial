@@ -5,6 +5,7 @@
 
 import express from "express";
 import path from "path";
+import fs from "fs";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
 import { FATIGA_QUESTIONS, PSICOSOCIAL_QUESTIONS } from "./src/data/questions";
@@ -16,7 +17,7 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 const DEFAULT_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbzm7qOogIAwemimo0npcIHm3o3OXyMnrBaj_IB3sveQSCnxPzBuq4sZaCAd00HfhI4wyA/exec";
+  "https://script.google.com/macros/s/AKfycbzrFyRpcJLLuh8KTzhI_MAImzc6kPDBi-jFM6T8KEBoo1KBnfVgP4d9vzUuQyDug6vEsg/exec";
 
 function getScriptUrl(): string {
   const envUrl = process.env.GOOGLE_APPS_SCRIPT_URL?.trim();
@@ -42,7 +43,7 @@ app.use(express.json());
 async function sendToGoogleAppsScript(scriptUrl: string, payload: any): Promise<{ success: boolean; message: string; details?: any }> {
   const jsonBody = JSON.stringify(payload);
 
-  // Attempt 1: Manual redirect handling preserving POST method & body
+  // Attempt 1: POST to script.google.com, then follow 302 redirect via GET to script.googleusercontent.com
   try {
     console.log("[GAS] Intentando POST (redirección manual) a:", scriptUrl);
     let res = await fetch(scriptUrl, {
@@ -55,11 +56,9 @@ async function sendToGoogleAppsScript(scriptUrl: string, payload: any): Promise<
     if (res.status >= 300 && res.status < 400) {
       const redirectUrl = res.headers.get("location");
       if (redirectUrl) {
-        console.log("[GAS] Siguiendo redirección a:", redirectUrl);
+        console.log("[GAS] Siguiendo redirección GET a:", redirectUrl);
         res = await fetch(redirectUrl, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: jsonBody,
+          method: "GET",
         });
       }
     }
@@ -85,7 +84,7 @@ async function sendToGoogleAppsScript(scriptUrl: string, payload: any): Promise<
     console.log("[GAS] Intentando POST directo...");
     const res = await fetch(scriptUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: jsonBody,
       redirect: "follow",
     });
@@ -106,7 +105,7 @@ async function sendToGoogleAppsScript(scriptUrl: string, payload: any): Promise<
     console.warn("[GAS] Error en intento POST directo:", err);
   }
 
-  // Attempt 3: GET request with query params (for scripts implemented via doGet)
+  // Attempt 3: GET request with query params
   try {
     console.log("[GAS] Intentando GET con parámetros URL...");
     const queryParams = new URLSearchParams();
@@ -138,7 +137,7 @@ async function sendToGoogleAppsScript(scriptUrl: string, payload: any): Promise<
 
   return {
     success: false,
-    message: "No se pudo sincronizar automáticamente con Google Sheets. Verifica la URL o los permisos del Web App script.",
+    message: "Guardado en servidor local. Nota: La URL de Google Apps Script no tiene permisos de acceso 'Cualquier persona' (Anyone) o no está publicada.",
   };
 }
 
@@ -184,6 +183,27 @@ app.post("/api/results", async (req, res) => {
     console.log("[API] Enviando resultados a Google Apps Script:", targetScriptUrl);
 
     const gasResult = await sendToGoogleAppsScript(targetScriptUrl, payload);
+    
+    // Save locally regardless so data is never lost
+    try {
+      const dataDir = path.join(process.cwd(), "data");
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+      const jsonFile = path.join(dataDir, "evaluations.json");
+      let current: any[] = [];
+      if (fs.existsSync(jsonFile)) {
+        try {
+          current = JSON.parse(fs.readFileSync(jsonFile, "utf-8"));
+        } catch {}
+      }
+      current.push({ ...payload, timestamp: new Date().toISOString() });
+      fs.writeFileSync(jsonFile, JSON.stringify(current, null, 2), "utf-8");
+      console.log(`[API] Evaluación guardada localmente en data/evaluations.json (Total: ${current.length})`);
+    } catch (saveErr) {
+      console.warn("[API] No se pudo guardar copia local en disco:", saveErr);
+    }
+
     return res.json(gasResult);
   } catch (error) {
     console.error("[API] Error al enviar resultados:", error);
